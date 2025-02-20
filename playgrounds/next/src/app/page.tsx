@@ -28,6 +28,9 @@ import { switchChain } from 'wagmi/actions'
 import { optimism, sepolia } from 'wagmi/chains'
 
 import { wagmiContractConfig } from './contracts'
+import { useMutation } from '@tanstack/react-query'
+import { publicClientL2 } from '../public-client'
+import { useWalletClientL1 } from '../hooks/useWalletClient'
 
 export default function App() {
   useAccountEffect({
@@ -52,6 +55,7 @@ export default function App() {
       <Balance />
       <ConnectorClient />
       <SendTransaction />
+      <Bridge/>
       <ReadContract />
       <ReadContracts />
       <WriteContract />
@@ -384,6 +388,61 @@ function WriteContract() {
       )}
     </div>
   )
+}
+
+function Bridge() {
+  const walletClient1 = useWalletClientL1()
+
+  const {address} = useAccount()
+    
+  const { data: hash, error, isPending,mutate } = useMutation({mutationKey: ["bridge"], mutationFn: async (amount: bigint) => {
+    const args = await publicClientL2.buildDepositTransaction({
+      account: address!,
+      mint: amount,
+      to: address
+    });
+
+    const transactionHash = await walletClient1.depositTransaction(args);
+
+    return transactionHash
+  }, onError: console.error})
+
+    async function submit(e: FormEvent<HTMLFormElement>) {
+      e.preventDefault()
+      const formData = new FormData(e.target as HTMLFormElement)
+      const value = formData.get('value') as string
+
+      mutate(parseEther(value))
+    }
+  
+    const { isLoading: isConfirming, isSuccess: isConfirmed } =
+      useWaitForTransactionReceipt({
+        hash,
+      })
+  
+    return (
+      <div>
+        <h2>Bridge OP-Stack</h2>
+        <form onSubmit={submit}>
+          <input
+            name="value"
+            placeholder="Amount (ETH)"
+            type="number"
+            step="0.000000001"
+            required
+          />
+          <button disabled={isPending} type="submit">
+            {isPending ? 'Confirming...' : 'Send'}
+          </button>
+        </form>
+        {hash && <div>Transaction Hash: {hash}</div>}
+        {isConfirming && 'Waiting for confirmation...'}
+        {isConfirmed && 'Transaction confirmed.'}
+        {error && (
+          <div>Error: {(error as BaseError).shortMessage || error.message}</div>
+        )}
+      </div>
+    )
 }
 
 function Repro() {
