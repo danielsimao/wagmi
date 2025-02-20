@@ -1,8 +1,8 @@
 import { http, cookieStorage, createConfig, createStorage } from 'wagmi'
 import { mainnet, optimism, optimismSepolia } from 'wagmi/chains'
 import { injected, metaMask, walletConnect } from 'wagmi/connectors'
-import { sepolia } from './sepolia'
 import { bobSepolia } from './bob'
+import { sepolia } from './sepolia'
 
 export function getConfig() {
   return createConfig({
